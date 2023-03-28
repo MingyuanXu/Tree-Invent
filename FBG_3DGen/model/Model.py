@@ -736,8 +736,10 @@ class MolGen_Model:
                     addlogstr.join(lstr)
                     print (f'Epoch: {self.epochs} nsamples: {sample_num}'+lstr)
                     Save_smiles_list(smis,f'{picpath}/ft_{self.epochs}_temp_{temp:.2E}.smi')
-                    img=Draw.MolsToGridImage(mols,molsPerRow=5,subImgSize=(250,250),legends=list([f'{float(a):.3E}' for a in sims]))
-                    img.save(f'{picpath}/ft_{self.epochs}_temp_{temp:.2E}.png')
+                    img=Draw.MolsToGridImage(mols,molsPerRow=5,subImgSize=(250,250),legends=list([f'{float(a):.3E}' for a in sims]),useSVG=True)
+                    #img.save(f'{picpath}/ft_{self.epochs}_temp_{temp:.2E}.png')
+                    with open(f'{picpath}/ft_{self.epochs}_temp_{temp:.2E}.svg','w') as f:
+                        f.write(img)
             
             bid=0
             logstr=self.log_training(epoch,epochnum,bid)

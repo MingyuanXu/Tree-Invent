@@ -15,7 +15,10 @@ from ..scores.Scoringfunction import *
 class MolGen_Model_RL:
     def __init__(self,prior_modelname='',agent_modelname='',loadtype='Minloss',**kwargs):
         self.prior_modelname=prior_modelname
-        self.agent_modelname=prior_modelname+'_RL'
+        if agent_modelname=='':
+            self.agent_modelname=prior_modelname+'_RL'
+        else:
+            self.agent_modelname=agent_modelname 
         self.training_history=[]
         self.batch_train_loss_dict={''}
         self.n_train_steps=None
@@ -38,7 +41,8 @@ class MolGen_Model_RL:
         self.__build_model()
         if loadtype:
             self.load_prior(self.prior_modelname,loadtype)
-            if 'agent_modelname' not in kwargs:
+            #print (self.node_add_model_agent)
+            if agent_modelname=='':
                 self.load_agent(self.prior_modelname,loadtype)
             else:
                 self.load_agent(self.agent_modelname,loadtype)
@@ -135,14 +139,11 @@ class MolGen_Model_RL:
         return 
 
     def load_agent(self,modelname,loadtype):
+        #print ('**',modelname)
         with tempfile.TemporaryDirectory() as dirpath:
             with zipfile.ZipFile(modelname + ".zip", "r") as zip_ref:
                 zip_ref.extractall(dirpath)
-            # Load metadata
-            metadata = pickle.load(open(dirpath + "/modelsetting.pickle", "rb"))
-            #print (metadata.keys())
-            #print (metadata)
-            self.__dict__.update(metadata)
+            print (modelname,dirpath,os.system(f'ls {dirpath}/model'))
             if loadtype=="Perepoch":
                 node_add_modelcpkt=torch.load(dirpath+"/model/node_add_model_perepoch.cpk")
                 self.node_add_model_agent.load_state_dict(node_add_modelcpkt["state_dict"])
@@ -215,8 +216,10 @@ class MolGen_Model_RL:
         #nodes,edges,atomnums,agent_loglikelihoods,prior_loglikelihoods,mols,smis=self.sample(sample_num=self.batchsize)
         scores,validity,uniqueness,unknown=score_func.compute_score(mols,output_path=score_path)
         os.system(f'mkdir -p {picpath}')
-        img=Draw.MolsToGridImage(mols,molsPerRow=5,subImgSize=(250,250),legends=list([str(float(a)) for a in scores.clone().detach().cpu().numpy()]))
-        img.save(f'{picpath}/RL_{step}.png')
+        img=Draw.MolsToGridImage(mols,molsPerRow=5,subImgSize=(250,250),legends=list([str(float(a)) for a in scores.clone().detach().cpu().numpy()]),useSVG=True)
+        with open(f'{picpath}/RL_{step}.png','w') as f:
+            f.write(img)
+        #img.save(f'{picpath}/RL_{step}.png')
         augmented_prior_loglikelihoods = (
             prior_loglikelihoods + GP.rlsetting.sigma * scores
         )
@@ -321,8 +324,9 @@ class MolGen_Model_RL:
                 for mid,mol in enumerate(valid_mols):
                     f.write(Chem.MolToSmiles(mol)+','+valid_score_str[mid]+'\n')
             if GP.rlsetting.save_pic:
-                img=Draw.MolsToGridImage(valid_mols,molsPerRow=5,subImgSize=(250,250),legends=valid_score_str)
-                img.save(f'{picpath}/RL_{step}.png')
+                img=Draw.MolsToGridImage(valid_mols,molsPerRow=5,subImgSize=(250,250),legends=valid_score_str,useSVG=True)
+                with open(f'{picpath}/RL_{step}.svg','w') as f:
+                    f.write(img)
 
         except Exception as e:
             print (f'save png of valid molecules failed due to {e}')

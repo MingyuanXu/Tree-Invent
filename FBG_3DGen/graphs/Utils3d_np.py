@@ -86,12 +86,14 @@ def np_adjs_to_zmat(adjs):
 def np_adjs_to_ctable(adjs):
     ctable=np.sum(adjs,axis=0)
     ctable[0,0]=1
-    if ctable[0,2]==0:
-        ctable[0,2]=0.5
-        ctable[2,0]=0.5
-    if ctable[1,2]==0:
-        ctable[1,2]=0.5
-        ctable[2,1]=0.5
+    if len(ctable)>2:
+        #print (ctable)
+        if ctable[0,2]==0:
+            ctable[0,2]=0.5
+            ctable[2,0]=0.5
+        if ctable[1,2]==0:
+            ctable[1,2]=0.5
+            ctable[2,1]=0.5
     return ctable
     
 def np_adjs_to_zmat2(adjs):

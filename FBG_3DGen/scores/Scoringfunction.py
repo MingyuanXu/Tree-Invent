@@ -9,7 +9,7 @@ from rdkit import DataStructs
 from rdkit.Chem import QED, AllChem
 import numpy as np
 import sklearn,math
-from sklearn import svm
+from sklearn import svm,metrics
 from ..comparm import *
 from tqdm import tqdm
 import random
@@ -66,8 +66,9 @@ def create_activity_model(smis,labels,path='./activity',cut_rate=0.9):
     model.fit(np.array(X)[:cutnum],np.array(Y)[:cutnum])
     scores=model.score(np.array(X)[cutnum:],np.array(Y)[cutnum:])
     Y_pred=model.predict(np.array(X)[cutnum:])
-
+    auc=metrics.roc_auc_score(np.array(Y)[cutnum:],Y_pred)
     print (f'Mean accuracy of SVC model is {scores}')
+    print (f'AUC of SVC model is {auc}')
     with open(f'{path}/SVC.pickle','wb') as f:
         pickle.dump(model,f)
     return 

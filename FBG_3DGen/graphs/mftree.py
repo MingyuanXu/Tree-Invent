@@ -424,46 +424,184 @@ class MolFragTree():
 
         return
 
-    def generate_3D_info_for_cliques(self):
-        self.clique_coords=[]
-        self.clique_zmats=[]
-        self.clique_ics=[]
+    def cal_ics(self):
         print (self.atom_adjs)
-        zmat=np.zeros((self.natoms,5))
+        self.zmat=np.zeros((self.natoms,5))
+        self.zmat=np_adjs_to_zmat2(self.atom_adjs)
+        x1=self.coords[zmat[:,0]] 
+        x2=self.coords[zmat[:,1]]
+        x3=self.coords[zmat[:,2]]
+        x4=self.coords[zmat[:,3]]
+        self.ics=np.zeros(s(self.natoms,3))
+        bonds-calc_bond(x1[1:],x2[1:])
+        angles=calc_angle(x1[2:],x2[2:],x3[2:])
+        dihedrals=calc_angle(x1[3:],x2[3:],x3[3:],x4[3:])
+        self.ics[1:,0]=bonds
+        self.ics[2:,1]=angles
+        self.ics[3:,2]=dihedrals
+        return 
+    def perb_coordinates(self,ratio=0.05):
+        pass
+        return 
+    
+    def get_action_states_3D(self):
+        mol_graph_states=[]
+        focus_atom_ids=[]
+        focus_atom_ics=[]
         for i in range(self.ncliques):
-            zmat_tmp=np_adjs_to_zmat2(self.clique_inner_adjs[i])
-            print (zmat_tmp)
-            print (self.cliques[i])
-            #if len(self.cliques[i])==2:
-                
-                # sing atom node:
-        """
+            graph_atoms_mask_node=np.zeros(self.natoms)
+            graph_atoms=[]
+            for j in range(i+1):
+                graph_atoms+=self.cliques[j]
+            for j in graph_atoms:
+                graph_atoms_mask_node[j]=1
+            graph_atoms_mask_node_2D=graph_atoms_mask_node.reshape(-1,1)*graph_atoms_mask_node.reshape(-1,1).T
+            mol_graph_adjs=self.atom_adjs*graph_atoms_mask_node_2D
+            mol_graph_nodes=self.f_atoms*graph_atoms_mask_node
+            for j in self.cliques[i]:
+                d3_atoms_mask_node=np.zeros(self.natoms)
+                d3_atoms=[k for k in range(j)]
+                d3_atoms_mask_node[:j]=1
+                d3_atoms_mask_node_2D=d3_atoms_mask_node.reshape(-1,1)*d3_atoms_mask_node.reshape(-1,1).T
+                mol_graph_nodes_3D=self.coords*d3_atoms_mask_node
+                mol_graph_states.append([mol_graph_adjs,mol_graph_nodes,mol_graph_nodes_3D,d3_atom_mask_node,d3_atom_mask_node_2D])
+                focus_atom_ids.append(self.zmat[j])
+                focus_atoms_ics.append(self.ics[j])
+    
+    def get_action_states_graph_3D(self):
+        #print ([type(f_atoms) for f_atoms in self.clique_inner_f_atoms])
+        mol_graph_states=[]
+        mol_graph_apd=[]
+        ring_graph_states=[]
+        ring_graph_apd=[]
+        node_connect_states=[]
+        node_connect_apd=[]
+
         for i in range(self.ncliques):
-            ic=np.zeros((len(self.cliques[i]),3))
-            xyz=self.coords[self.cliques[i]]
-            x1=xyz[zmat[:,0]]
-            x2=xyz[zmat[:,1]]
-            x3=xyz[zmat[:,2]]
-            x4=xyz[zmat[:,3]]
-            #print (x1,x2,x3,x4)
-            if len(ic)>1:
-                bonds=calc_bond(x1[1:],x2[1:])
-                #print (bonds)
-                ic[1:,0]=bonds
-            if len(ic)>2:
-                angle=calc_angle(x1[2:],x2[2:],x3[2:])
-                #print(angle)
-                ic[2:,1]=angle
-                #print(ic[2:,1])
-            if len(ic)>3:
-                dihedral=calc_dihedral(x1[3:],x2[3:],x3[3:],x4[3:])
-                ic[3:,2]=dihedral
-            ic=np.concatnate((bonds,angle,dihedral),axis=1)
-            print (ic)
-            self.clique_coords.append(self.coords[self.cliques[i]])
-            self.clique_zmats.append(zmat)
-            self.clique_ics.append(ic)
-        """
+            graph_atoms_mask_node=np.zeros(self.natoms)
+            graph_atoms=[]
+            if i>0:
+                for j in range(i):
+                    graph_atoms+=list(self.cliques[j])
+                for j in graph_atoms:
+                    graph_atoms_mask_node[j]=1
+            graph_atoms_mask_node_2D=graph_atoms_mask_node.reshape(-1,1)*graph_atoms_mask_node.reshape(-1,1).T
+            mol_graph_adjs=self.atom_adjs*graph_atoms_mask_node_2D
+            mol_graph_nodes=self.f_atoms*graph_atoms_mask_node.reshape(-1,1)
+            
+            f=self.f_cliques[i]
+            if len(self.cliques[i])>1:
+                descriptor=f'R{f[0]}-C{f[1]}-N{f[2]}-O{f[3]}-F{f[4]}-P{f[5]}-S{f[6]}-Cl{f[7]}-Br{f[8]}-I{f[9]}-Bes{f[10]}-AR{f[11]}'
+                #print (descriptor,GP.syssetting.node_type_dict.keys())
+                if descriptor not in GP.syssetting.node_type_dict.keys():
+                    print (f'Unsupport Node type for MFTree named {self.smi} with descriptor {descriptor}')
+                    return None 
+                else:
+                    fid=GP.syssetting.node_type_dict[descriptor]
+            else:
+                fid=GP.syssetting.node_type_dict[self.clique_inner_atoms[i][0]]
+
+            f_T=np.zeros(GP.syssetting.num_node_types)
+            f_terminate=np.zeros(1)
+
+            if f[0]==0 and len(self.cliques[i])==1:
+                f_T[GP.syssetting.node_type_dict[self.clique_inner_atoms[i][0]]]=1
+            else:
+                f_T[GP.syssetting.node_type_dict[descriptor]]=1
+
+            mol_graph_states.append([mol_graph_nodes,mol_graph_adjs])
+            mol_graph_apd.append([f_T,f_terminate])
+            
+            if f[0]>0:
+                for ii in range(len(self.cliques[i])):
+                    atomi=self.cliques[i][ii]
+                    atom=self.mol.GetAtomWithIdx(int(atomi))
+                    ring_atoms_mask_node=np.zeros(len(self.cliques[i]))
+                    ring_atoms_mask_node[:ii]=1
+                    ring_atoms_mask_node_2D=ring_atoms_mask_node.reshape(-1,1)*ring_atoms_mask_node.reshape(-1,1).T
+                    ring_graph_adjs=self.clique_inner_adjs[i]*ring_atoms_mask_node_2D
+                    ring_graph_nodes=self.clique_inner_f_atoms[i]*ring_atoms_mask_node.reshape(-1,1)
+                    f_ring_add=np.zeros(GP.syssetting.f_ring_add_dim)
+                    f_ring_connect=np.zeros(GP.syssetting.f_ring_connect_dim)
+                    f_ring_terminate=np.zeros(1)
+                    atypeid=GP.syssetting.ringatom_type_dict[atom.GetAtomicNum()]
+                    if ii!=0:
+                        #print (np.sum(self.clique_inner_adjs[i],axis=0)[ii][:ii],self.cliques[i])
+                        connect_atom_id=np.where(np.sum(self.clique_inner_adjs[i],axis=0)[ii][:ii])[0][-1]
+                    else:
+                        connect_atom_id=0
+
+                    atom_formal_charge=atom.GetFormalCharge()
+                    formal_charge_id=GP.syssetting.formal_charge_types.index(atom_formal_charge)
+                    implicit_Hs_num=atom.GetImplicitValence()
+                    implicit_Hs_id=GP.syssetting.implicit_Hs_types.index(implicit_Hs_num)
+                    chiral_tag=int(atom.GetChiralTag())
+                    chiral_id=GP.syssetting.chiral_tag_types.index(chiral_tag)
+                    if ii!=0:
+                        bond_type=self.mol.GetBondBetweenAtoms(int(atomi),int(self.cliques[i][connect_atom_id])).GetBondType()
+                        bond_type_id=GP.syssetting.bond_types.index(bond_type)
+                    else:
+                        bond_type_id=0
+
+                    #print (atypeid,connect_atom_id,formal_charge_id,implicit_Hs_id,chiral_id,bond_type_id,GP.syssetting.f_ring_add_dim)
+                    if GP.syssetting.use_chiral_tag:
+                        if GP.syssetting.use_Hs:
+                            f_ring_add[connect_atom_id,atypeid,formal_charge_id,implicit_Hs_id,chiral_id,bond_type_id]=1
+                        else:
+                            f_ring_add[connect_atom_id,atypeid,formal_charge_id,chiral_id,bond_type_id]=1
+                    else:
+                        if GP.syssetting.use_Hs:
+                            f_ring_add[connect_atom_id,atypeid,formal_charge_id,implicit_Hs_id,bond_type_id]=1
+                        else:
+                            f_ring_add[connect_atom_id,atypeid,formal_charge_id,bond_type_id]=1
+                    #print (ii,type(ring_graph_nodes))
+                    ring_graph_states.append([mol_graph_nodes,mol_graph_adjs,ring_graph_nodes,ring_graph_adjs,f])
+                    ring_graph_apd.append([f_ring_add,f_ring_connect,f_ring_terminate])
+                    if len(np.where(np.sum(self.clique_inner_adjs[i],axis=0)[ii][:ii])[0])>1: 
+                        connect_atoms=np.where(np.sum(self.clique_inner_adjs[i],axis=0)[ii][:ii])[0][:-1]
+                        ring_atoms_mask_node[ii]=1
+                        ring_atoms_mask_node_2D[ii,connect_atom_id]=1
+                        ring_atoms_mask_node_2D[connect_atom_id,ii]=1
+                        for jj in range(len(connect_atoms)):
+                            if jj!=0:
+                                ring_atoms_mask_node_2D[ii,connect_atoms[jj-1]]=1
+                                ring_atoms_mask_node_2D[connect_atoms[jj-1],ii]=1
+                            ring_graph_adjs=self.clique_inner_adjs[i]*ring_atoms_mask_node_2D
+                            ring_graph_nodes=self.clique_inner_f_atoms[i]*ring_atoms_mask_node.reshape(-1,1)
+                            #print (ii,jj,type(ring_graph_nodes))
+                            f_ring_add=np.zeros(GP.syssetting.f_ring_add_dim)
+                            f_ring_connect=np.zeros(GP.syssetting.f_ring_connect_dim)
+                            f_ring_terminate=np.zeros(1)
+                            atomj=self.cliques[i][connect_atoms[jj]]
+                            bond_type=self.mol.GetBondBetweenAtoms(int(atomi),int(atomj)).GetBondType()
+                            bond_type_id=GP.syssetting.bond_types.index(bond_type)
+                            f_ring_connect[connect_atoms[jj],bond_type_id]=1
+                            ring_graph_states.append([mol_graph_nodes,mol_graph_adjs,ring_graph_nodes,ring_graph_adjs,f])
+                            ring_graph_apd.append([f_ring_add,f_ring_connect,f_ring_terminate])
+
+                f_ring_add=np.zeros(GP.syssetting.f_ring_add_dim)
+                f_ring_connect=np.zeros(GP.syssetting.f_ring_connect_dim)
+                f_ring_terminate=np.ones(1)   
+                ring_graph_states.append([mol_graph_nodes,mol_graph_adjs,np.array(self.clique_inner_f_atoms[i]),np.array(self.clique_inner_adjs[i]),f])
+                ring_graph_apd.append([f_ring_add,f_ring_connect,f_ring_terminate])
+            if i>0:
+                f_joint=np.zeros(GP.syssetting.f_node_joint_dim)
+                focused_clique_id=np.where(self.clique_adjs[i][:i])[0][-1]
+                joint_id=int(self.clique_adjs_info[i,focused_clique_id][1])
+                bond_type=self.mol.GetBondBetweenAtoms(int(self.clique_adjs_info[i,focused_clique_id][1]),int(self.clique_adjs_info[focused_clique_id,i][1])).GetBondType()
+                bond_type_id=GP.syssetting.bond_types.index(bond_type)
+                f_joint[joint_id,bond_type_id]=1
+                Added_nodes=np.array(self.clique_inner_f_atoms[i])
+                Added_adjs=np.array(self.clique_inner_adjs[i])
+                node_connect_states.append([mol_graph_nodes,mol_graph_adjs,Added_nodes,Added_adjs])
+                node_connect_apd.append([f_joint])
+
+        f_T=np.zeros(GP.syssetting.num_node_types)
+        f_terminate=np.ones(1)
+        mol_graph_states.append([self.f_atoms,self.atom_adjs])
+        mol_graph_apd.append([f_T,f_terminate])        
+        
+        return mol_graph_states,mol_graph_apd,ring_graph_states,ring_graph_apd,node_connect_states,node_connect_apd
 
     def get_action_states_graph(self):
         #print ([type(f_atoms) for f_atoms in self.clique_inner_f_atoms])
@@ -500,7 +638,7 @@ class MolFragTree():
                     fid=GP.syssetting.node_type_dict[descriptor]
             else:
                 fid=GP.syssetting.node_type_dict[self.clique_inner_atoms[i][0]]
-            
+
             f_T=np.zeros(GP.syssetting.num_node_types)
             f_terminate=np.zeros(1)
 

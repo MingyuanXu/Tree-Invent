@@ -3,7 +3,7 @@ from rdkit.Chem.Draw import rdMolDraw2D
 import copy
 import numpy as np
 from rdkit import Chem 
-from rdkit.Chem import AllChem,rdmolfiles,rdFMCS
+from rdkit.Chem import AllChem,rdmolfiles,rdFMCS,Draw
 import copy
 from rdkit import DataStructs
 from rdkit.Chem import Descriptors, rdMolDescriptors, QED
@@ -17,6 +17,7 @@ def tanimoto_similarities(mol1,mol2):
         fp2 = AllChem.GetMorganFingerprint(mol2, GP.syssetting.similarity_radius, useCounts=True, useFeatures=True)
     similarity= DataStructs.TanimotoSimilarity(fp1, fp2)
     return similarity
+
 def match_substructures(mols,smarts=[],submols=[]):
     submols+=[Chem.MolFromSmarts(submol) for subst in smarts if Chem.MolFromSmarts(subst)]
     print (submols)
@@ -34,6 +35,7 @@ def match_substructures(mols,smarts=[],submols=[]):
         return np.array(matches)
     else:
         return np.zeros(len(mols))
+
 def mcs_similarity(mols,smarts=[],submols=[]):
     similarity_scores=[]
     submols+=[Chem.MolFromSmarts(submol) for subst in smarts if Chem.MolFromSmarts(subst)]
@@ -175,6 +177,20 @@ def Drawmols(rdkitmol,filename='Mol.png',permindex=[],cliques=[]):
     draw.FinishDrawing()
     draw.WriteDrawingText(filename)
 
+def SmilesToSVG(smiles,legends=None,fname='mol.svg'):
+    mols=[]
+    vlegends=[]
+    for sid,smi in enumerate(smiles):
+        mol=Chem.MolFromSmiles(smi)
+        if mol:
+            Chem.AllChem.Compute2DCoords(mol)
+            mols.append(mol)
+            if legends:
+                vlegends.append(legends[sid])
+    img=Draw.MolsToGridImage(mols,legends=vlegends,molsPerRow=5,subImgSize=(250,250),useSVG=True)
+    with open (fname,'w') as f:
+        f.write(img)
+    return 
 
 def Neutralize_atoms(mol):
     pattern = Chem.MolFromSmarts("[+1!h0!$([*]~[-1,-2,-3,-4]),-1!$([*]~[+1,+2,+3,+4])]")
@@ -375,8 +391,9 @@ def Define_box_grid_figure(datadict,figtext={},grids=(2,1),size=(12,12),filename
         pos=figtext[key]
         figure.text(pos[0],pos[1],key,fontsize=16,rotation=pos[2])
     plt.subplots_adjust(wspace=0.3,hspace=0.3)
-    plt.savefig(filename)
-    plt.show()
+    #plt.savefig(filename)
+    #plt.show()
+    figure.savefig(filename,format='svg',dpi=300)
         
 def MolToMolgraph(mol,ifpadding=False,mode='mol'):
     natoms=mol.GetNumAtoms()
