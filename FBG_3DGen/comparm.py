@@ -221,6 +221,7 @@ class nadd_type_constrain:
         self.max_anum_per_atomtype={'C':100,'N':100,'O':100,'F':100,'P':100,'S':100,'Cl':100,'Br':100,'I':100}
         self.min_anum_per_atomtype={'C':0,'N':0,'O':0,'F':0,'P':0,'S':0,'Cl':0,'Br':0,'I':0}
         self.max_heavy_atoms=100
+        self.min_heavy_atoms=0
         self.force_step=False
         self.specific_nodefile=None
         self.update()

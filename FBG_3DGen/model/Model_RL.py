@@ -747,6 +747,8 @@ class MolGen_Model_RL:
                     avaliable_nadd_mask[j][k]=0
                 if nadd_constrain.max_aromatic_rings<ARnum or ARnum<nadd_constrain.min_aromatic_rings:
                     avaliable_nadd_mask[j][k]=0
+                if tanum>nadd_constrain.max_heavy_atoms or tanum<nadd_constrain.min_heavy_atoms:
+                    avaliable_nadd_mask[j][k]=0
             if nadd_constrain.force_step:
                 avaliable_nadd_mask[j][-1]=0
             avaliable_nadd_mask=avaliable_nadd_mask.view(-1,n_types+1).long()
