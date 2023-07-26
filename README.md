@@ -20,8 +20,7 @@ Tree-Invent supports :
 [@Mingyuan Xu](https://github.com/MingyuanXu)
 
 ## Examples
-* comming soon
-
+* Examples for Various drug design strategy can be found in https://github.com/MingyuanXu/TreeInvent-Community .
 
 
 
